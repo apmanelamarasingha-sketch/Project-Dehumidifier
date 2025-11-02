@@ -1,15 +1,15 @@
 #include <Arduino.h>
 
-const int LED_PIN = 2;
+const int fan_1 = 4;
 
 void setup() {
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
+  pinMode(fan_1, OUTPUT);
+  digitalWrite(fan_1, HIGH);
 }
 
 void loop() {
-  delay(500);
-  digitalWrite(LED_PIN, HIGH);
-  delay(500);
-  digitalWrite(LED_PIN, LOW);
+  delay(5000);
+  digitalWrite(fan_1, LOW);
+  delay(5000);
+  digitalWrite(fan_1, HIGH);
 }
