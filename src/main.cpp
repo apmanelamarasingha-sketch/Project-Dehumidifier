@@ -1,18 +1,20 @@
 #include <Arduino.h>
 #include "DHTesp.h"
 
-const int DHT_PIN = 15;     // DHT sensor pin
+const int DHT1_PIN = 15;    // Container 1 sensor
+const int DHT2_PIN = 18;    // Container 2 sensor
 const int FAN_1 = 4;        // Supply fan (pushes dry air back)
 const int FAN_2 = 5;        // Exhaust fan (pulls moist air out)
 
 // Humidity control thresholds
-const float UPPER_HUMIDITY = 75.0;  // Turn fans ON when humidity exceeds this
-const float LOWER_HUMIDITY = 65.0;  // Turn fans OFF when humidity drops below this
+const float UPPER_HUMIDITY = 85.0;  // Turn fans ON when humidity exceeds this
+const float LOWER_HUMIDITY = 75.0;  // Turn fans OFF when humidity drops below this
 
 // Dehumidification delay: time between exhaust fan ON and supply fan ON
 const unsigned long DEHUMIDIFY_DELAY_MS = 30000;  // 30 seconds for dehumidifying process
 
-DHTesp dht;
+DHTesp dht1;  // Container 1 sensor
+DHTesp dht2;  // Container 2 sensor
 bool fansRunning = false;
 bool supplyFanOn = false;
 unsigned long exhaustStartTime = 0;
@@ -21,8 +23,9 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  // Initialize DHT sensor
-  dht.setup(DHT_PIN, DHTesp::DHT11);
+  // Initialize DHT sensors
+  dht1.setup(DHT1_PIN, DHTesp::DHT11);
+  dht2.setup(DHT2_PIN, DHTesp::DHT11);
 
   // Initialize fan pins
   pinMode(FAN_1, OUTPUT);
@@ -30,8 +33,10 @@ void setup() {
   digitalWrite(FAN_1, LOW);  // Supply fan OFF
   digitalWrite(FAN_2, LOW);  // Exhaust fan OFF
   
-  Serial.println("Dual Fan Humidity Control");
-  Serial.println("-------------------------");
+  Serial.println("Dual Container Humidity Control");
+  Serial.println("--------------------------------");
+  Serial.println("Container 1: DHT sensor on D15");
+  Serial.println("Container 2: DHT sensor on D18");
   Serial.println("FAN 1 (D4): Supply Fan");
   Serial.println("FAN 2 (D5): Exhaust Fan");
   Serial.print("Target range: ");
@@ -43,23 +48,55 @@ void setup() {
 }
 
 void loop() {
-  // Read humidity
-  delay(dht.getMinimumSamplingPeriod());
-  float humidity = dht.getHumidity();
+  // Read humidity from both sensors
+  delay(dht1.getMinimumSamplingPeriod());
+  float humidity1 = dht1.getHumidity();
+  delay(dht2.getMinimumSamplingPeriod());
+  float humidity2 = dht2.getHumidity();
   
-  if (isnan(humidity)) {
-    Serial.println("Failed to read from DHT sensor!");
+  // Display readings
+  Serial.print("Container 1: ");
+  if (isnan(humidity1)) {
+    Serial.print("ERROR");
+  } else {
+    Serial.print(humidity1);
+    Serial.print("%");
+  }
+  
+  Serial.print("  |  Container 2: ");
+  if (isnan(humidity2)) {
+    Serial.print("ERROR");
+  } else {
+    Serial.print(humidity2);
+    Serial.print("%");
+  }
+
+  // Determine if any container needs dehumidifying
+  // Use the higher humidity value if both are valid
+  float maxHumidity = 0;
+  bool anyValid = false;
+  
+  if (!isnan(humidity1)) {
+    maxHumidity = humidity1;
+    anyValid = true;
+  }
+  if (!isnan(humidity2)) {
+    if (!anyValid || humidity2 > maxHumidity) {
+      maxHumidity = humidity2;
+    }
+    anyValid = true;
+  }
+  
+  if (!anyValid) {
+    Serial.println("  ->  ERROR: Both sensors failed!");
     delay(2000);
     return;
   }
 
-  Serial.print("Relative Humidity: ");
-  Serial.print(humidity);
-  Serial.print(" %");
-
   // Control logic with hysteresis and delayed supply fan
-  if (humidity > UPPER_HUMIDITY && !fansRunning) {
-    // Humidity too high - start dehumidifying
+  // Use the highest humidity reading to decide fan control
+  if (maxHumidity > UPPER_HUMIDITY && !fansRunning) {
+    // Humidity too high in at least one container - start dehumidifying
     fansRunning = true;
     supplyFanOn = false;
     exhaustStartTime = millis();
@@ -67,8 +104,8 @@ void loop() {
     digitalWrite(FAN_1, LOW);   // Supply fan stays OFF initially
     Serial.print("  ->  EXHAUST FAN ON (dehumidifying)");
   } 
-  else if (humidity < LOWER_HUMIDITY && fansRunning) {
-    // Humidity reached target - turn OFF both fans
+  else if (maxHumidity < LOWER_HUMIDITY && fansRunning) {
+    // Humidity reached target in both containers - turn OFF both fans
     digitalWrite(FAN_2, LOW);   // Turn OFF exhaust fan
     digitalWrite(FAN_1, LOW);   // Turn OFF supply fan
     fansRunning = false;
