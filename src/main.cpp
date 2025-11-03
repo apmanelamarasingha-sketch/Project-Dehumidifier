@@ -9,6 +9,8 @@ const int FAN_2 = 5;        // Exhaust fan (pulls moist air out)
 // Relay pins for solenoid valves
 const int RELAY_EXHAUST_1 = 13;  // Container 1 exhaust valve (normally closed)
 const int RELAY_SUPPLY_1 = 12;   // Container 1 supply valve (normally closed)
+const int RELAY_EXHAUST_2 = 27;  // Container 2 exhaust valve (normally closed)
+const int RELAY_SUPPLY_2 = 26;   // Container 2 supply valve (normally closed)
 
 // Humidity control thresholds
 const float UPPER_HUMIDITY = 85.0;  // Turn fans ON when humidity exceeds this
@@ -28,6 +30,10 @@ bool container1ExhaustValve = false;  // Container 1 exhaust valve state
 bool container1SupplyValve = false;   // Container 1 supply valve state
 unsigned long container1ExhaustStart = 0;  // Track when exhaust started for Container 1
 
+bool container2ExhaustValve = false;  // Container 2 exhaust valve state
+bool container2SupplyValve = false;   // Container 2 supply valve state
+unsigned long container2ExhaustStart = 0;  // Track when exhaust started for Container 2
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -45,8 +51,12 @@ void setup() {
   // Initialize relay pins for solenoid valves
   pinMode(RELAY_EXHAUST_1, OUTPUT);
   pinMode(RELAY_SUPPLY_1, OUTPUT);
+  pinMode(RELAY_EXHAUST_2, OUTPUT);
+  pinMode(RELAY_SUPPLY_2, OUTPUT);
   digitalWrite(RELAY_EXHAUST_1, LOW);  // Container 1 exhaust valve CLOSED
   digitalWrite(RELAY_SUPPLY_1, LOW);   // Container 1 supply valve CLOSED
+  digitalWrite(RELAY_EXHAUST_2, LOW);  // Container 2 exhaust valve CLOSED
+  digitalWrite(RELAY_SUPPLY_2, LOW);   // Container 2 supply valve CLOSED
   
   Serial.println("Dual Container Humidity Control");
   Serial.println("--------------------------------");
@@ -55,7 +65,9 @@ void setup() {
   Serial.println("FAN 1 (D4): Supply Fan");
   Serial.println("FAN 2 (D5): Exhaust Fan");
   Serial.println("Relay D13: Container 1 Exhaust Valve");
-  Serial.println("Relay D14: Container 1 Supply Valve");
+  Serial.println("Relay D12: Container 1 Supply Valve");
+  Serial.println("Relay D27: Container 2 Exhaust Valve");
+  Serial.println("Relay D26: Container 2 Supply Valve");
   Serial.print("Target range: ");
   Serial.print(LOWER_HUMIDITY);
   Serial.print(" - ");
@@ -155,6 +167,54 @@ void loop() {
     else {
       // Humidity in range, valves closed
       Serial.print("  [C1: Both valves CLOSED]");
+    }
+  }
+
+  // Control Container 2 valves based on Container 2 humidity only
+  if (!isnan(humidity2)) {
+    if (humidity2 > UPPER_HUMIDITY && !container2ExhaustValve) {
+      // Container 2 humidity too high - START dehumidifying
+      // OPEN exhaust valve, CLOSE supply valve
+      digitalWrite(RELAY_EXHAUST_2, HIGH);
+      digitalWrite(RELAY_SUPPLY_2, LOW);
+      container2ExhaustValve = true;
+      container2SupplyValve = false;
+      container2ExhaustStart = millis();
+      Serial.print("  [C2: Exhaust OPEN, Supply CLOSED]");
+    }
+    else if (humidity2 < LOWER_HUMIDITY && container2ExhaustValve) {
+      // Container 2 humidity OK - STOP dehumidifying
+      // CLOSE both valves
+      digitalWrite(RELAY_EXHAUST_2, LOW);
+      digitalWrite(RELAY_SUPPLY_2, LOW);
+      container2ExhaustValve = false;
+      container2SupplyValve = false;
+      Serial.print("  [C2: Both valves CLOSED]");
+    }
+    else if (container2ExhaustValve) {
+      // Currently dehumidifying - check if it's time to open supply valve
+      unsigned long elapsed = millis() - container2ExhaustStart;
+      
+      if (!container2SupplyValve && elapsed >= DEHUMIDIFY_DELAY_MS) {
+        // 30 seconds passed - OPEN supply valve (keep exhaust open too)
+        digitalWrite(RELAY_SUPPLY_2, HIGH);
+        container2SupplyValve = true;
+        Serial.print("  [C2: Both valves OPEN]");
+      }
+      else if (!container2SupplyValve) {
+        // Still waiting for delay
+        Serial.print("  [C2: Exhaust OPEN, Supply opening in ");
+        Serial.print((DEHUMIDIFY_DELAY_MS - elapsed) / 1000);
+        Serial.print("s]");
+      }
+      else {
+        // Both valves open
+        Serial.print("  [C2: Both valves OPEN]");
+      }
+    }
+    else {
+      // Humidity in range, valves closed
+      Serial.print("  [C2: Both valves CLOSED]");
     }
   }
 
