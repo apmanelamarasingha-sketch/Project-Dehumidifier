@@ -11,6 +11,7 @@ const int RELAY_EXHAUST_1 = 13;  // Container 1 exhaust valve (normally closed)
 const int RELAY_SUPPLY_1 = 12;   // Container 1 supply valve (normally closed)
 const int RELAY_EXHAUST_2 = 27;  // Container 2 exhaust valve (normally closed)
 const int RELAY_SUPPLY_2 = 26;   // Container 2 supply valve (normally closed)
+const int RELAY_PELTIER = 25;    // Peltier thermoelectric cooler
 
 // Humidity control thresholds
 const float UPPER_HUMIDITY = 85.0;  // Turn fans ON when humidity exceeds this
@@ -48,15 +49,17 @@ void setup() {
   digitalWrite(FAN_1, LOW);  // Supply fan OFF
   digitalWrite(FAN_2, LOW);  // Exhaust fan OFF
   
-  // Initialize relay pins for solenoid valves
+  // Initialize relay pins for solenoid valves and Peltier
   pinMode(RELAY_EXHAUST_1, OUTPUT);
   pinMode(RELAY_SUPPLY_1, OUTPUT);
   pinMode(RELAY_EXHAUST_2, OUTPUT);
   pinMode(RELAY_SUPPLY_2, OUTPUT);
+  pinMode(RELAY_PELTIER, OUTPUT);
   digitalWrite(RELAY_EXHAUST_1, LOW);  // Container 1 exhaust valve CLOSED
   digitalWrite(RELAY_SUPPLY_1, LOW);   // Container 1 supply valve CLOSED
   digitalWrite(RELAY_EXHAUST_2, LOW);  // Container 2 exhaust valve CLOSED
   digitalWrite(RELAY_SUPPLY_2, LOW);   // Container 2 supply valve CLOSED
+  digitalWrite(RELAY_PELTIER, LOW);    // Peltier OFF
   
   Serial.println("Dual Container Humidity Control");
   Serial.println("--------------------------------");
@@ -68,6 +71,7 @@ void setup() {
   Serial.println("Relay D12: Container 1 Supply Valve");
   Serial.println("Relay D27: Container 2 Exhaust Valve");
   Serial.println("Relay D26: Container 2 Supply Valve");
+  Serial.println("Relay D25: Peltier Cooler");
   Serial.print("Target range: ");
   Serial.print(LOWER_HUMIDITY);
   Serial.print(" - ");
@@ -216,6 +220,16 @@ void loop() {
       // Humidity in range, valves closed
       Serial.print("  [C2: Both valves CLOSED]");
     }
+  }
+
+  // Control Peltier cooler - ON when any container is dehumidifying
+  bool anyDehumidifying = container1ExhaustValve || container2ExhaustValve;
+  if (anyDehumidifying) {
+    digitalWrite(RELAY_PELTIER, HIGH);  // Peltier ON
+    Serial.print("  [Peltier: ON]");
+  } else {
+    digitalWrite(RELAY_PELTIER, LOW);   // Peltier OFF
+    Serial.print("  [Peltier: OFF]");
   }
 
   // Control logic with hysteresis and delayed supply fan
