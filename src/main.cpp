@@ -14,8 +14,8 @@ const int RELAY_SUPPLY_2 = 26;   // Container 2 supply valve (normally closed)
 const int RELAY_PELTIER = 25;    // Peltier thermoelectric cooler
 
 // Humidity control thresholds
-const float UPPER_HUMIDITY = 85.0;  // Turn fans ON when humidity exceeds this
-const float LOWER_HUMIDITY = 75.0;  // Turn fans OFF when humidity drops below this
+const float UPPER_HUMIDITY = 90.0;  // Turn fans ON when humidity exceeds this
+const float LOWER_HUMIDITY = 80.0;  // Turn fans OFF when humidity drops below this
 
 // Dehumidification delay: time between exhaust fan ON and supply fan ON
 const unsigned long DEHUMIDIFY_DELAY_MS = 30000;  // 30 seconds for dehumidifying process
@@ -43,11 +43,11 @@ void setup() {
   dht1.setup(DHT1_PIN, DHTesp::DHT11);
   dht2.setup(DHT2_PIN, DHTesp::DHT11);
 
-  // Initialize fan pins
+  // Initialize fan pins (Active LOW relays: HIGH = OFF, LOW = ON)
   pinMode(FAN_1, OUTPUT);
   pinMode(FAN_2, OUTPUT);
-  digitalWrite(FAN_1, LOW);  // Supply fan OFF
-  digitalWrite(FAN_2, LOW);  // Exhaust fan OFF
+  digitalWrite(FAN_1, HIGH);  // Supply fan OFF
+  digitalWrite(FAN_2, HIGH);  // Exhaust fan OFF
   
   // Initialize relay pins for solenoid valves and Peltier
   pinMode(RELAY_EXHAUST_1, OUTPUT);
@@ -239,14 +239,14 @@ void loop() {
     fansRunning = true;
     supplyFanOn = false;
     exhaustStartTime = millis();
-    digitalWrite(FAN_2, HIGH);  // Turn ON exhaust fan immediately
-    digitalWrite(FAN_1, LOW);   // Supply fan stays OFF initially
+    digitalWrite(FAN_2, LOW);   // Turn ON exhaust fan immediately (Active LOW)
+    digitalWrite(FAN_1, HIGH);  // Supply fan stays OFF initially (Active LOW)
     Serial.print("  ->  EXHAUST FAN ON (dehumidifying)");
   } 
   else if (maxHumidity < LOWER_HUMIDITY && fansRunning) {
     // Humidity reached target in both containers - turn OFF both fans
-    digitalWrite(FAN_2, LOW);   // Turn OFF exhaust fan
-    digitalWrite(FAN_1, LOW);   // Turn OFF supply fan
+    digitalWrite(FAN_2, HIGH);  // Turn OFF exhaust fan (Active LOW)
+    digitalWrite(FAN_1, HIGH);  // Turn OFF supply fan (Active LOW)
     fansRunning = false;
     supplyFanOn = false;
     Serial.print("  ->  BOTH FANS OFF (target reached)");
@@ -257,7 +257,7 @@ void loop() {
     
     if (!supplyFanOn && elapsed >= DEHUMIDIFY_DELAY_MS) {
       // 30 seconds passed, turn ON supply fan
-      digitalWrite(FAN_1, HIGH);
+      digitalWrite(FAN_1, LOW);  // Turn ON supply fan (Active LOW)
       supplyFanOn = true;
       Serial.print("  ->  BOTH FANS ON (exhaust + supply)");
     }
