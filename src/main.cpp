@@ -1,5 +1,13 @@
 #include <Arduino.h>
 #include "DHTesp.h"
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 const int DHT1_PIN = 15;    // Container 1 sensor
 const int DHT2_PIN = 18;    // Container 2 sensor
@@ -35,9 +43,64 @@ bool container2ExhaustValve = false;  // Container 2 exhaust valve state
 bool container2SupplyValve = false;   // Container 2 supply valve state
 unsigned long container2ExhaustStart = 0;  // Track when exhaust started for Container 2
 
+void updateDisplay(float h1, float h2) {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  
+  // Title
+  display.setCursor(0, 0);
+  display.println("Dehumidifier System");
+  display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
+  
+  // Container 1
+  display.setCursor(0, 16);
+  display.setTextSize(1);
+  display.println("Container 1:");
+  display.setCursor(0, 26);
+  display.setTextSize(1);
+  if (isnan(h1)) {
+    display.println("RH: ERROR");
+  } else {
+    display.print("RH: ");
+    display.print(h1, 1);
+    display.println(" %");
+  }
+  
+  // Container 2
+  display.setCursor(0, 42);
+  display.setTextSize(1);
+  display.println("Container 2:");
+  display.setCursor(0, 52);
+  display.setTextSize(1);
+  if (isnan(h2)) {
+    display.println("RH: ERROR");
+  } else {
+    display.print("RH: ");
+    display.print(h2, 1);
+    display.println(" %");
+  }
+  
+  display.display();
+}
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
+  
+  // Initialize OLED display
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("Dehumidifier");
+  display.println("System Starting...");
+  display.display();
+  delay(2000);
   
   // Initialize DHT sensors
   dht1.setup(DHT1_PIN, DHTesp::DHT11);
@@ -86,6 +149,9 @@ void loop() {
   float humidity1 = dht1.getHumidity();
   delay(dht2.getMinimumSamplingPeriod());
   float humidity2 = dht2.getHumidity();
+  
+  // Update OLED display
+  updateDisplay(humidity1, humidity2);
   
   // Display readings
   Serial.print("Container 1: ");
