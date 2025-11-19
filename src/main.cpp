@@ -114,7 +114,7 @@ void showCompleteAnimation() {
   delay(3000);  // Show animation for 3 seconds
 }
 
-void updateDisplay(float h1, float h2) {
+void updateDisplay(float h1, float h2, float t1, float t2) {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
@@ -130,12 +130,14 @@ void updateDisplay(float h1, float h2) {
   display.println("Container 1:");
   display.setCursor(0, 26);
   display.setTextSize(1);
-  if (isnan(h1)) {
+  if (isnan(h1) || isnan(t1)) {
     display.println("RH: ERROR");
   } else {
-    display.print("RH: ");
+    display.print("RH:");
     display.print(h1, 1);
-    display.println(" %");
+    display.print("% T:");
+    display.print(t1, 1);
+    display.println("C");
   }
   
   // Container 2
@@ -144,12 +146,14 @@ void updateDisplay(float h1, float h2) {
   display.println("Container 2:");
   display.setCursor(0, 52);
   display.setTextSize(1);
-  if (isnan(h2)) {
+  if (isnan(h2) || isnan(t2)) {
     display.println("RH: ERROR");
   } else {
-    display.print("RH: ");
+    display.print("RH:");
     display.print(h2, 1);
-    display.println(" %");
+    display.print("% T:");
+    display.print(t2, 1);
+    display.println("C");
   }
   
   display.display();
@@ -238,14 +242,16 @@ void setup() {
 }
 
 void loop() {
-  // Read humidity from both sensors
+  // Read humidity and temperature from both sensors
   delay(dht1.getMinimumSamplingPeriod());
   float humidity1 = dht1.getHumidity();
+  float temperature1 = dht1.getTemperature();
   delay(dht2.getMinimumSamplingPeriod());
   float humidity2 = dht2.getHumidity();
+  float temperature2 = dht2.getTemperature();
   
   // Update OLED display
-  updateDisplay(humidity1, humidity2);
+  updateDisplay(humidity1, humidity2, temperature1, temperature2);
   
   // Display readings
   Serial.print("Container 1: ");
