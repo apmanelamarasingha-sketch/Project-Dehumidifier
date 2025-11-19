@@ -50,7 +50,7 @@ void updateDisplay(float h1, float h2) {
   
   // Title
   display.setCursor(0, 0);
-  display.println("Dehumidifier System");
+  display.println("Current Status");
   display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
   
   // Container 1
@@ -93,14 +93,37 @@ void setup() {
     Serial.println(F("SSD1306 allocation failed"));
     for(;;);
   }
+  
+  // Startup animation
+  display.clearDisplay();
+  
+  // Draw animated loading bar
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(25, 10);
+  display.println("DEHUMID");
+  display.setCursor(29, 30);
+  display.println("SYSTEM");
+  display.display();
+  delay(1000);
+  
+  // Animated progress bar
+  for(int i = 0; i < 128; i += 4) {
+    display.fillRect(0, 55, i, 8, SSD1306_WHITE);
+    display.display();
+    delay(20);
+  }
+  delay(500);
+  
+  // Welcome screen
   display.clearDisplay();
   display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.println("Dehumidifier");
-  display.println("System Starting...");
+  display.setCursor(25, 20);
+  display.println("Initializing");
+  display.setCursor(35, 35);
+  display.println("Sensors...");
   display.display();
-  delay(2000);
+  delay(1500);
   
   // Initialize DHT sensors
   dht1.setup(DHT1_PIN, DHTesp::DHT11);
