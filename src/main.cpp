@@ -43,6 +43,77 @@ bool container2ExhaustValve = false;  // Container 2 exhaust valve state
 bool container2SupplyValve = false;   // Container 2 supply valve state
 unsigned long container2ExhaustStart = 0;  // Track when exhaust started for Container 2
 
+void showDehumidifyingAnimation() {
+  display.clearDisplay();
+  
+  // Draw water droplet (outer shape)
+  display.fillCircle(64, 35, 18, SSD1306_WHITE);
+  display.fillTriangle(64, 15, 54, 35, 74, 35, SSD1306_WHITE);
+  
+  // Draw upward arrow inside droplet
+  // Arrow shaft
+  display.fillRect(61, 28, 6, 16, SSD1306_BLACK);
+  // Arrow head
+  display.fillTriangle(64, 22, 57, 30, 71, 30, SSD1306_BLACK);
+  
+  // Draw waves at bottom of droplet
+  for(int i = 0; i < 3; i++) {
+    int y = 40 + i * 3;
+    display.drawLine(54, y, 58, y-2, SSD1306_BLACK);
+    display.drawLine(58, y-2, 64, y, SSD1306_BLACK);
+    display.drawLine(64, y, 70, y-2, SSD1306_BLACK);
+    display.drawLine(70, y-2, 74, y, SSD1306_BLACK);
+  }
+  
+  // Text
+  display.setTextSize(1);
+  display.setCursor(5, 2);
+  display.println("DEHUMIDIFYING");
+  
+  display.setTextSize(2);
+  display.setCursor(100, 2);
+  display.println("ON");
+  
+  display.display();
+  delay(3000);  // Show animation for 3 seconds
+}
+
+void showCompleteAnimation() {
+  display.clearDisplay();
+  
+  // Draw water droplet (outer shape)
+  display.fillCircle(64, 35, 18, SSD1306_WHITE);
+  display.fillTriangle(64, 15, 54, 35, 74, 35, SSD1306_WHITE);
+  
+  // Draw checkmark inside droplet
+  // Checkmark short line (bottom left to middle)
+  display.drawLine(56, 35, 62, 42, SSD1306_BLACK);
+  display.drawLine(56, 36, 62, 43, SSD1306_BLACK);
+  display.drawLine(57, 35, 63, 42, SSD1306_BLACK);
+  
+  // Checkmark long line (middle to top right)
+  display.drawLine(62, 42, 72, 28, SSD1306_BLACK);
+  display.drawLine(62, 43, 72, 29, SSD1306_BLACK);
+  display.drawLine(63, 42, 73, 28, SSD1306_BLACK);
+  
+  
+  
+  
+  // Text
+  display.setTextSize(1);
+  display.setCursor(0, 2);
+  display.println("DEHUMIDIFYING");
+  
+  display.setTextSize(2);
+  display.setCursor(80, 2);
+  display.println("DONE");
+  
+  
+  
+  display.display();
+  delay(3000);  // Show animation for 3 seconds
+}
+
 void updateDisplay(float h1, float h2) {
   display.clearDisplay();
   display.setTextSize(1);
@@ -325,6 +396,7 @@ void loop() {
   // Use the highest humidity reading to decide fan control
   if (maxHumidity > UPPER_HUMIDITY && !fansRunning) {
     // Humidity too high in at least one container - start dehumidifying
+    showDehumidifyingAnimation();  // Show animation when dehumidifying starts
     fansRunning = true;
     supplyFanOn = false;
     exhaustStartTime = millis();
@@ -338,6 +410,7 @@ void loop() {
     digitalWrite(FAN_1, HIGH);  // Turn OFF supply fan (Active LOW)
     fansRunning = false;
     supplyFanOn = false;
+    showCompleteAnimation();  // Show animation when dehumidifying completes
     Serial.print("  ->  BOTH FANS OFF (target reached)");
   }
   else if (fansRunning) {
