@@ -43,6 +43,29 @@ bool container2ExhaustValve = false;  // Container 2 exhaust valve state
 bool container2SupplyValve = false;   // Container 2 supply valve state
 unsigned long container2ExhaustStart = 0;  // Track when exhaust started for Container 2
 
+// Fan animation variables
+int fanRotation = 0;  // Fan blade rotation angle
+
+void drawFan(int x, int y, int angle, bool rotating) {
+  // Draw fan circle
+  display.drawCircle(x, y, 8, SSD1306_WHITE);
+  
+  // Draw 3 fan blades based on rotation angle
+  for(int i = 0; i < 3; i++) {
+    int bladeAngle = angle + (i * 120);  // 120 degrees apart
+    float rad = bladeAngle * 0.0174533;  // Convert to radians
+    int x1 = x + cos(rad) * 2;
+    int y1 = y + sin(rad) * 2;
+    int x2 = x + cos(rad) * 7;
+    int y2 = y + sin(rad) * 7;
+    display.drawLine(x1, y1, x2, y2, SSD1306_WHITE);
+    display.drawLine(x1+1, y1, x2+1, y2, SSD1306_WHITE);  // Thicker blade
+  }
+  
+  // Draw center dot
+  display.fillCircle(x, y, 2, SSD1306_WHITE);
+}
+
 void showDehumidifyingAnimation() {
   display.clearDisplay();
   
@@ -156,6 +179,9 @@ void updateDisplay(float h1, float h2, float t1, float t2) {
     display.println("C");
   }
   
+  // Draw fan in bottom right corner
+  drawFan(115, 54, fanRotation, fansRunning);
+  
   display.display();
 }
 
@@ -242,11 +268,17 @@ void setup() {
 }
 
 void loop() {
+  // Update fan animation rotation
+  if (fansRunning) {
+    fanRotation += 45;  // Rotate by 45 degrees each loop when fans running
+    if (fanRotation >= 360) fanRotation = 0;
+  }
+  
   // Read humidity and temperature from both sensors
-  delay(dht1.getMinimumSamplingPeriod());
+  delay(100);  // Small delay for sensor stability
   float humidity1 = dht1.getHumidity();
   float temperature1 = dht1.getTemperature();
-  delay(dht2.getMinimumSamplingPeriod());
+  delay(100);  // Small delay for sensor stability
   float humidity2 = dht2.getHumidity();
   float temperature2 = dht2.getTemperature();
   
@@ -446,5 +478,5 @@ void loop() {
   }
   
   Serial.println();
-  delay(2000);  // Wait before next reading
+  delay(100);  // Short delay for smooth animation
 }
