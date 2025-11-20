@@ -242,10 +242,10 @@ void setup() {
   pinMode(RELAY_EXHAUST_2, OUTPUT);
   pinMode(RELAY_SUPPLY_2, OUTPUT);
   pinMode(RELAY_PELTIER, OUTPUT);
-  digitalWrite(RELAY_EXHAUST_1, LOW);  // Container 1 exhaust valve CLOSED
-  digitalWrite(RELAY_SUPPLY_1, LOW);   // Container 1 supply valve CLOSED
-  digitalWrite(RELAY_EXHAUST_2, LOW);  // Container 2 exhaust valve CLOSED
-  digitalWrite(RELAY_SUPPLY_2, LOW);   // Container 2 supply valve CLOSED
+  digitalWrite(RELAY_EXHAUST_1, HIGH);  // Container 1 exhaust valve CLOSED (Active LOW relay)
+  digitalWrite(RELAY_SUPPLY_1, HIGH);   // Container 1 supply valve CLOSED
+  digitalWrite(RELAY_EXHAUST_2, HIGH);  // Container 2 exhaust valve CLOSED
+  digitalWrite(RELAY_SUPPLY_2, HIGH);   // Container 2 supply valve CLOSED
   digitalWrite(RELAY_PELTIER, LOW);    // Peltier OFF
   
   Serial.println("Dual Container Humidity Control");
@@ -329,8 +329,8 @@ void loop() {
     if (humidity1 > UPPER_HUMIDITY && !container1ExhaustValve) {
       // Container 1 humidity too high - START dehumidifying
       // OPEN exhaust valve, CLOSE supply valve
-      digitalWrite(RELAY_EXHAUST_1, HIGH);
-      digitalWrite(RELAY_SUPPLY_1, LOW);
+      digitalWrite(RELAY_EXHAUST_1, LOW);   // LOW = OPEN (Active LOW relay)
+      digitalWrite(RELAY_SUPPLY_1, HIGH);   // HIGH = CLOSE
       container1ExhaustValve = true;
       container1SupplyValve = false;
       container1ExhaustStart = millis();
@@ -339,8 +339,8 @@ void loop() {
     else if (humidity1 < LOWER_HUMIDITY && container1ExhaustValve) {
       // Container 1 humidity OK - STOP dehumidifying
       // CLOSE both valves
-      digitalWrite(RELAY_EXHAUST_1, LOW);
-      digitalWrite(RELAY_SUPPLY_1, LOW);
+      digitalWrite(RELAY_EXHAUST_1, HIGH);  // HIGH = CLOSE
+      digitalWrite(RELAY_SUPPLY_1, HIGH);   // HIGH = CLOSE
       container1ExhaustValve = false;
       container1SupplyValve = false;
       Serial.print("  [C1: Both valves CLOSED]");
@@ -351,7 +351,7 @@ void loop() {
       
       if (!container1SupplyValve && elapsed >= DEHUMIDIFY_DELAY_MS) {
         // 30 seconds passed - OPEN supply valve (keep exhaust open too)
-        digitalWrite(RELAY_SUPPLY_1, HIGH);
+        digitalWrite(RELAY_SUPPLY_1, LOW);    // LOW = OPEN (Active LOW relay)
         container1SupplyValve = true;
         Serial.print("  [C1: Both valves OPEN]");
       }
@@ -377,8 +377,8 @@ void loop() {
     if (humidity2 > UPPER_HUMIDITY && !container2ExhaustValve) {
       // Container 2 humidity too high - START dehumidifying
       // OPEN exhaust valve, CLOSE supply valve
-      digitalWrite(RELAY_EXHAUST_2, HIGH);
-      digitalWrite(RELAY_SUPPLY_2, LOW);
+      digitalWrite(RELAY_EXHAUST_2, LOW);   // LOW = OPEN (Active LOW relay)
+      digitalWrite(RELAY_SUPPLY_2, HIGH);   // HIGH = CLOSE
       container2ExhaustValve = true;
       container2SupplyValve = false;
       container2ExhaustStart = millis();
@@ -387,8 +387,8 @@ void loop() {
     else if (humidity2 < LOWER_HUMIDITY && container2ExhaustValve) {
       // Container 2 humidity OK - STOP dehumidifying
       // CLOSE both valves
-      digitalWrite(RELAY_EXHAUST_2, LOW);
-      digitalWrite(RELAY_SUPPLY_2, LOW);
+      digitalWrite(RELAY_EXHAUST_2, HIGH);  // HIGH = CLOSE
+      digitalWrite(RELAY_SUPPLY_2, HIGH);   // HIGH = CLOSE
       container2ExhaustValve = false;
       container2SupplyValve = false;
       Serial.print("  [C2: Both valves CLOSED]");
@@ -399,7 +399,7 @@ void loop() {
       
       if (!container2SupplyValve && elapsed >= DEHUMIDIFY_DELAY_MS) {
         // 30 seconds passed - OPEN supply valve (keep exhaust open too)
-        digitalWrite(RELAY_SUPPLY_2, HIGH);
+        digitalWrite(RELAY_SUPPLY_2, LOW);    // LOW = OPEN (Active LOW relay)
         container2SupplyValve = true;
         Serial.print("  [C2: Both valves OPEN]");
       }
