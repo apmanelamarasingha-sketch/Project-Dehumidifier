@@ -46,6 +46,35 @@ unsigned long container2ExhaustStart = 0;  // Track when exhaust started for Con
 // Fan animation variables
 int fanRotation = 0;  // Fan blade rotation angle
 
+// Function to output CSV data for logging
+void outputCSVData(float h1, float t1, float h2, float t2) {
+  // Format: Timestamp,C1_Humidity,C1_Temp,C2_Humidity,C2_Temp,ExhaustFan,SupplyFan,C1_ExhaustValve,C1_SupplyValve,C2_ExhaustValve,C2_SupplyValve,Peltier
+  Serial.print("DATA,");
+  Serial.print(millis());
+  Serial.print(",");
+  Serial.print(isnan(h1) ? -1 : h1, 2);
+  Serial.print(",");
+  Serial.print(isnan(t1) ? -1 : t1, 2);
+  Serial.print(",");
+  Serial.print(isnan(h2) ? -1 : h2, 2);
+  Serial.print(",");
+  Serial.print(isnan(t2) ? -1 : t2, 2);
+  Serial.print(",");
+  Serial.print(fansRunning && !supplyFanOn ? 1 : 0);  // Exhaust fan (FAN_2)
+  Serial.print(",");
+  Serial.print(supplyFanOn ? 1 : 0);  // Supply fan (FAN_1)
+  Serial.print(",");
+  Serial.print(container1ExhaustValve ? 1 : 0);
+  Serial.print(",");
+  Serial.print(container1SupplyValve ? 1 : 0);
+  Serial.print(",");
+  Serial.print(container2ExhaustValve ? 1 : 0);
+  Serial.print(",");
+  Serial.print(container2SupplyValve ? 1 : 0);
+  Serial.print(",");
+  Serial.println(container1ExhaustValve || container2ExhaustValve ? 1 : 0);  // Peltier status
+}
+
 void drawFan(int x, int y, int angle, bool rotating) {
   // Draw fan circle
   display.drawCircle(x, y, 8, SSD1306_WHITE);
@@ -281,6 +310,9 @@ void loop() {
   delay(100);  // Small delay for sensor stability
   float humidity2 = dht2.getHumidity();
   float temperature2 = dht2.getTemperature();
+  
+  // Output CSV data for logging
+  outputCSVData(humidity1, temperature1, humidity2, temperature2);
   
   // Update OLED display
   updateDisplay(humidity1, humidity2, temperature1, temperature2);
