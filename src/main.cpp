@@ -275,7 +275,7 @@ void setup() {
   digitalWrite(RELAY_SUPPLY_1, HIGH);   // Container 1 supply valve CLOSED
   digitalWrite(RELAY_EXHAUST_2, HIGH);  // Container 2 exhaust valve CLOSED
   digitalWrite(RELAY_SUPPLY_2, HIGH);   // Container 2 supply valve CLOSED
-  digitalWrite(RELAY_PELTIER, LOW);    // Peltier OFF
+  digitalWrite(RELAY_PELTIER, HIGH);   // Peltier OFF (Active LOW relay)
   
   Serial.println("Dual Container Humidity Control");
   Serial.println("--------------------------------");
@@ -455,10 +455,10 @@ void loop() {
   // Control Peltier cooler - ON when any container is dehumidifying
   bool anyDehumidifying = container1ExhaustValve || container2ExhaustValve;
   if (anyDehumidifying) {
-    digitalWrite(RELAY_PELTIER, HIGH);  // Peltier ON
+    digitalWrite(RELAY_PELTIER, LOW);   // Peltier ON (Active LOW relay)
     Serial.print("  [Peltier: ON]");
   } else {
-    digitalWrite(RELAY_PELTIER, LOW);   // Peltier OFF
+    digitalWrite(RELAY_PELTIER, HIGH);  // Peltier OFF
     Serial.print("  [Peltier: OFF]");
   }
 
