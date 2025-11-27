@@ -46,14 +46,6 @@ unsigned long container2ExhaustStart = 0;  // Track when exhaust started for Con
 // Fan animation variables
 int fanRotation = 0;  // Fan blade rotation angle
 
-// CSV Data Logging
-unsigned long lastLogTime = 0;
-const unsigned long LOG_INTERVAL = 100;  // High-resolution logging: every 100ms
-
-// Human-readable monitoring
-unsigned long lastMonitorTime = 0;
-const unsigned long MONITOR_INTERVAL = 2000;  // Display readable status every 2 seconds
-
 void drawFan(int x, int y, int angle, bool rotating) {
   // Draw fan circle
   display.drawCircle(x, y, 8, SSD1306_WHITE);
@@ -197,10 +189,6 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  // Print CSV header for data logging
-  Serial.println("Time(ms),Humidity1(%),Temp1(C),Humidity2(%),Temp2(C),FansRunning,PeltierOn,C1_ExhaustValve,C1_SupplyValve,C2_ExhaustValve,C2_SupplyValve");
-  delay(100);
-  
   // Initialize OLED display
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
@@ -297,84 +285,21 @@ void loop() {
   // Update OLED display
   updateDisplay(humidity1, humidity2, temperature1, temperature2);
   
-  unsigned long currentTime = millis();
-  
-  // HIGH-RESOLUTION CSV DATA LOGGING (every 100ms)
-  if (currentTime - lastLogTime >= LOG_INTERVAL) {
-    lastLogTime = currentTime;
-    
-    // Output CSV line: Time,H1,T1,H2,T2,Fans,Peltier,C1_Exhaust,C1_Supply,C2_Exhaust,C2_Supply
-    Serial.print(currentTime);
-    Serial.print(",");
-    Serial.print(isnan(humidity1) ? -999 : humidity1, 2);
-    Serial.print(",");
-    Serial.print(isnan(temperature1) ? -999 : temperature1, 2);
-    Serial.print(",");
-    Serial.print(isnan(humidity2) ? -999 : humidity2, 2);
-    Serial.print(",");
-    Serial.print(isnan(temperature2) ? -999 : temperature2, 2);
-    Serial.print(",");
-    Serial.print(fansRunning ? 1 : 0);
-    Serial.print(",");
-    bool peltierOn = (container1ExhaustValve || container2ExhaustValve);
-    Serial.print(peltierOn ? 1 : 0);
-    Serial.print(",");
-    Serial.print(container1ExhaustValve ? 1 : 0);
-    Serial.print(",");
-    Serial.print(container1SupplyValve ? 1 : 0);
-    Serial.print(",");
-    Serial.print(container2ExhaustValve ? 1 : 0);
-    Serial.print(",");
-    Serial.println(container2SupplyValve ? 1 : 0);
+  // Display readings
+  Serial.print("Container 1: ");
+  if (isnan(humidity1)) {
+    Serial.print("ERROR");
+  } else {
+    Serial.print(humidity1);
+    Serial.print("%");
   }
   
-  // HUMAN-READABLE MONITORING (every 2 seconds)
-  if (currentTime - lastMonitorTime >= MONITOR_INTERVAL) {
-    lastMonitorTime = currentTime;
-    
-    // Display readable status
-    Serial.println("\n========================================");
-    Serial.print("Container 1: ");
-    if (isnan(humidity1)) {
-      Serial.print("ERROR");
-    } else {
-      Serial.print(humidity1, 1);
-      Serial.print("% RH, ");
-      Serial.print(temperature1, 1);
-      Serial.print("°C");
-    }
-    
-    Serial.print("  |  Container 2: ");
-    if (isnan(humidity2)) {
-      Serial.print("ERROR");
-    } else {
-      Serial.print(humidity2, 1);
-      Serial.print("% RH, ");
-      Serial.print(temperature2, 1);
-      Serial.print("°C");
-    }
-    Serial.println();
-    
-    // System status
-    Serial.print("Fans: ");
-    Serial.print(fansRunning ? "ON" : "OFF");
-    Serial.print("  |  Peltier: ");
-    bool peltierOn = (container1ExhaustValve || container2ExhaustValve);
-    Serial.print(peltierOn ? "ON" : "OFF");
-    Serial.println();
-    
-    // Valve status
-    Serial.print("C1 Valves: Exhaust=");
-    Serial.print(container1ExhaustValve ? "OPEN" : "CLOSED");
-    Serial.print(", Supply=");
-    Serial.print(container1SupplyValve ? "OPEN" : "CLOSED");
-    Serial.println();
-    
-    Serial.print("C2 Valves: Exhaust=");
-    Serial.print(container2ExhaustValve ? "OPEN" : "CLOSED");
-    Serial.print(", Supply=");
-    Serial.print(container2SupplyValve ? "OPEN" : "CLOSED");
-    Serial.println("\n");
+  Serial.print("  |  Container 2: ");
+  if (isnan(humidity2)) {
+    Serial.print("ERROR");
+  } else {
+    Serial.print(humidity2);
+    Serial.print("%");
   }
 
   // Determine if any container needs dehumidifying
@@ -394,7 +319,8 @@ void loop() {
   }
   
   if (!anyValid) {
-    // Both sensors failed - skip this cycle
+    Serial.println("  ->  ERROR: Both sensors failed!");
+    delay(2000);
     return;
   }
 
@@ -408,6 +334,7 @@ void loop() {
       container1ExhaustValve = true;
       container1SupplyValve = false;
       container1ExhaustStart = millis();
+      Serial.print("  [C1: Exhaust OPEN, Supply CLOSED]");
     }
     else if (humidity1 < LOWER_HUMIDITY && container1ExhaustValve) {
       // Container 1 humidity OK - STOP dehumidifying
@@ -416,6 +343,7 @@ void loop() {
       digitalWrite(RELAY_SUPPLY_1, HIGH);   // HIGH = CLOSE
       container1ExhaustValve = false;
       container1SupplyValve = false;
+      Serial.print("  [C1: Both valves CLOSED]");
     }
     else if (container1ExhaustValve) {
       // Currently dehumidifying - check if it's time to open supply valve
@@ -425,7 +353,22 @@ void loop() {
         // 30 seconds passed - OPEN supply valve (keep exhaust open too)
         digitalWrite(RELAY_SUPPLY_1, LOW);    // LOW = OPEN (Active LOW relay)
         container1SupplyValve = true;
+        Serial.print("  [C1: Both valves OPEN]");
       }
+      else if (!container1SupplyValve) {
+        // Still waiting for delay
+        Serial.print("  [C1: Exhaust OPEN, Supply opening in ");
+        Serial.print((DEHUMIDIFY_DELAY_MS - elapsed) / 1000);
+        Serial.print("s]");
+      }
+      else {
+        // Both valves open
+        Serial.print("  [C1: Both valves OPEN]");
+      }
+    }
+    else {
+      // Humidity in range, valves closed
+      Serial.print("  [C1: Both valves CLOSED]");
     }
   }
 
@@ -439,6 +382,7 @@ void loop() {
       container2ExhaustValve = true;
       container2SupplyValve = false;
       container2ExhaustStart = millis();
+      Serial.print("  [C2: Exhaust OPEN, Supply CLOSED]");
     }
     else if (humidity2 < LOWER_HUMIDITY && container2ExhaustValve) {
       // Container 2 humidity OK - STOP dehumidifying
@@ -447,6 +391,7 @@ void loop() {
       digitalWrite(RELAY_SUPPLY_2, HIGH);   // HIGH = CLOSE
       container2ExhaustValve = false;
       container2SupplyValve = false;
+      Serial.print("  [C2: Both valves CLOSED]");
     }
     else if (container2ExhaustValve) {
       // Currently dehumidifying - check if it's time to open supply valve
@@ -456,7 +401,22 @@ void loop() {
         // 30 seconds passed - OPEN supply valve (keep exhaust open too)
         digitalWrite(RELAY_SUPPLY_2, LOW);    // LOW = OPEN (Active LOW relay)
         container2SupplyValve = true;
+        Serial.print("  [C2: Both valves OPEN]");
       }
+      else if (!container2SupplyValve) {
+        // Still waiting for delay
+        Serial.print("  [C2: Exhaust OPEN, Supply opening in ");
+        Serial.print((DEHUMIDIFY_DELAY_MS - elapsed) / 1000);
+        Serial.print("s]");
+      }
+      else {
+        // Both valves open
+        Serial.print("  [C2: Both valves OPEN]");
+      }
+    }
+    else {
+      // Humidity in range, valves closed
+      Serial.print("  [C2: Both valves CLOSED]");
     }
   }
 
@@ -464,8 +424,10 @@ void loop() {
   bool anyDehumidifying = container1ExhaustValve || container2ExhaustValve;
   if (anyDehumidifying) {
     digitalWrite(RELAY_PELTIER, HIGH);  // Peltier ON
+    Serial.print("  [Peltier: ON]");
   } else {
     digitalWrite(RELAY_PELTIER, LOW);   // Peltier OFF
+    Serial.print("  [Peltier: OFF]");
   }
 
   // Control logic with hysteresis and delayed supply fan
@@ -478,6 +440,7 @@ void loop() {
     exhaustStartTime = millis();
     digitalWrite(FAN_2, LOW);   // Turn ON exhaust fan immediately (Active LOW)
     digitalWrite(FAN_1, HIGH);  // Supply fan stays OFF initially (Active LOW)
+    Serial.print("  ->  EXHAUST FAN ON (dehumidifying)");
   } 
   else if (maxHumidity < LOWER_HUMIDITY && fansRunning) {
     // Humidity reached target in both containers - turn OFF both fans
@@ -486,6 +449,7 @@ void loop() {
     fansRunning = false;
     supplyFanOn = false;
     showCompleteAnimation();  // Show animation when dehumidifying completes
+    Serial.print("  ->  BOTH FANS OFF (target reached)");
   }
   else if (fansRunning) {
     // Fans are running - check if it's time to turn on supply fan
@@ -495,8 +459,24 @@ void loop() {
       // 30 seconds passed, turn ON supply fan
       digitalWrite(FAN_1, LOW);  // Turn ON supply fan (Active LOW)
       supplyFanOn = true;
+      Serial.print("  ->  BOTH FANS ON (exhaust + supply)");
+    }
+    else if (!supplyFanOn) {
+      // Still waiting for delay
+      Serial.print("  ->  EXHAUST FAN ON (supply in ");
+      Serial.print((DEHUMIDIFY_DELAY_MS - elapsed) / 1000);
+      Serial.print("s)");
+    }
+    else {
+      // Both fans running
+      Serial.print("  ->  BOTH FANS ON (reducing humidity)");
     }
   }
+  else {
+    // Fans OFF, humidity in acceptable range
+    Serial.print("  ->  BOTH FANS OFF (humidity in range)");
+  }
   
+  Serial.println();
   delay(100);  // Short delay for smooth animation
 }
