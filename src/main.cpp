@@ -22,11 +22,11 @@ const int RELAY_SUPPLY_2 = 26;   // Container 2 supply valve (normally closed)
 const int RELAY_PELTIER = 25;    // Peltier thermoelectric cooler
 
 // Humidity control thresholds
-const float UPPER_HUMIDITY = 90.0;  // Turn fans ON when humidity exceeds this
-const float LOWER_HUMIDITY = 80.0;  // Turn fans OFF when humidity drops below this
+const float UPPER_HUMIDITY = 80.0;  // Turn fans ON when humidity exceeds this
+const float LOWER_HUMIDITY = 70.0;  // Turn fans OFF when humidity drops below this
 
 // Dehumidification delay: time between exhaust fan ON and supply fan ON
-const unsigned long DEHUMIDIFY_DELAY_MS = 30000;  // 30 seconds for dehumidifying process
+const unsigned long DEHUMIDIFY_DELAY_MS = 10000;  // 10 seconds for dehumidifying process
 
 DHTesp dht1;  // Container 1 sensor
 DHTesp dht2;  // Container 2 sensor
